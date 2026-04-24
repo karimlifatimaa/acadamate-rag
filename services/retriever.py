@@ -4,7 +4,7 @@ from qdrant_client.models import Filter, FieldCondition, MatchValue
 from typing import List, Tuple
 from services.vector_store import get_vector_store
 
-SIMILARITY_THRESHOLD = 0.65
+SIMILARITY_THRESHOLD = 0.3
 TOP_K = 5
 
 

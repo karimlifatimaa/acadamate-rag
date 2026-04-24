@@ -9,9 +9,9 @@ def load_and_split(file_path: str, subject: str, grade: int) -> List[Document]:
     pages = loader.load()
 
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
-        chunk_overlap=50,
-        separators=["\n\n", "\n", ".", " "],
+        chunk_size=800,
+        chunk_overlap=100,
+        separators=["\n\n", "\n", ".", "!", "?", " "],
     )
     chunks = splitter.split_documents(pages)
 
