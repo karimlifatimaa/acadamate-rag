@@ -1,24 +1,32 @@
 from langchain_community.document_loaders import PyPDFLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_experimental.text_splitter import SemanticChunker
 from langchain_core.documents import Document
 from typing import List
+from services.embedder import GeminiEmbeddings
 
 
 def load_and_split(file_path: str, subject: str, grade: int) -> List[Document]:
     loader = PyPDFLoader(file_path)
     pages = loader.load()
 
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=800,
-        chunk_overlap=100,
-        separators=["\n\n", "\n", ".", "!", "?", " "],
+    splitter = SemanticChunker(
+        embeddings=GeminiEmbeddings(),
+        breakpoint_threshold_type="percentile",
+        breakpoint_threshold_amount=95.0,
     )
-    chunks = splitter.split_documents(pages)
 
-    for chunk in chunks:
-        chunk.metadata["subject"] = subject
-        chunk.metadata["grade"] = grade
-        chunk.metadata["source_file"] = file_path
-        # PyPDFLoader artıq page metadata-sını əlavə edir (page key)
+    chunks: List[Document] = []
+    for page in pages:
+        page_chunks = splitter.create_documents([page.page_content])
+        for chunk in page_chunks:
+            if len(chunk.page_content.strip()) < 50:
+                continue
+            chunk.metadata = {
+                "subject": subject,
+                "grade": grade,
+                "page": page.metadata.get("page", 0),
+                "source_file": file_path,
+            }
+            chunks.append(chunk)
 
     return chunks

@@ -1,47 +1,37 @@
-import time
-import requests
 from langchain_core.embeddings import Embeddings
+from sentence_transformers import SentenceTransformer
 from typing import List
-from config import settings
 
-EMBED_URL = (
-    "https://generativelanguage.googleapis.com/v1beta/models/"
-    "gemini-embedding-001:embedContent"
-)
+MODEL_NAME = "BAAI/bge-m3"
+EMBEDDING_DIM = 1024
+BATCH_SIZE = 8
 
 
-def _embed_single(text: str, retries: int = 5) -> List[float]:
-    headers = {
-        "Content-Type": "application/json",
-        "X-goog-api-key": settings.google_api_key,
-    }
-    payload = {
-        "model": "models/gemini-embedding-001",
-        "content": {"parts": [{"text": text}]},
-        "outputDimensionality": 768,
-    }
+class LocalEmbeddings(Embeddings):
+    _model: SentenceTransformer | None = None
 
-    for attempt in range(retries):
-        response = requests.post(EMBED_URL, json=payload, headers=headers)
-        if response.status_code == 429:
-            wait = 2 ** attempt
-            print(f"Rate limit — {wait}s gözlənilir...")
-            time.sleep(wait)
-            continue
-        response.raise_for_status()
-        return response.json()["embedding"]["values"]
+    @classmethod
+    def _get_model(cls) -> SentenceTransformer:
+        if cls._model is None:
+            print(f"Embedding modeli yüklənir: {MODEL_NAME} (ilk dəfə 2-5 dəq çəkə bilər)")
+            cls._model = SentenceTransformer(MODEL_NAME)
+            print("Model hazırdır.")
+        return cls._model
 
-    raise RuntimeError("Embedding API rate limit — bütün cəhdlər uğursuz oldu.")
-
-
-class GeminiEmbeddings(Embeddings):
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        embeddings = []
-        for i, text in enumerate(texts):
-            embeddings.append(_embed_single(text))
-            if (i + 1) % 10 == 0:
-                time.sleep(1)
-        return embeddings
+        model = self._get_model()
+        embeddings = model.encode(
+            texts,
+            batch_size=BATCH_SIZE,
+            show_progress_bar=True,
+            normalize_embeddings=True,
+        )
+        return embeddings.tolist()
 
     def embed_query(self, text: str) -> List[float]:
-        return _embed_single(text)
+        model = self._get_model()
+        embedding = model.encode(text, normalize_embeddings=True)
+        return embedding.tolist()
+
+
+GeminiEmbeddings = LocalEmbeddings

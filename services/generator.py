@@ -1,3 +1,4 @@
+import time
 import requests
 from langchain_core.documents import Document
 from typing import List, Tuple
@@ -5,16 +6,20 @@ from models.schemas import AskResponse, SourceChunk
 from services.retriever import retrieve
 from config import settings
 
-GENERATE_URL = (
-    "https://generativelanguage.googleapis.com/v1beta/models/"
-    "gemini-flash-latest:generateContent"
-)
+GENERATE_URL = "https://api.groq.com/openai/v1/chat/completions"
+MODEL_NAME = "llama-3.3-70b-versatile"
 
 SYSTEM_PROMPT = """Sən Azərbaycan məktəb şagirdlərinə kömək edən müəllim köməkçisisən.
 Aşağıdakı dərslik parçalarına YALNIZ əsaslanaraq cavab ver.
-Cavabı {grade}-ci sinif şagirdinə uyğun sadə Azərbaycan dilində izah et.
-Əgər cavab dərslik parçalarında yoxdursa, "Bu mövzu dərslikdə izah olunmayıb." de.
-Xarici məlumat əlavə etmə. Yalnız dərslik mövzusunda cavab ver.
+
+Cavab qaydaları:
+1. Cavabı {grade}-ci sinif şagirdinə uyğun sadə Azərbaycan dilində izah et.
+2. Cavabı DOLĞUN ver — tərif, izah və mümkün olduqda misal göstər.
+3. Cavabı strukturlaşdır: əsas tərif → izah → misal(lar). Lazım olarsa siyahı və ya bənd istifadə et.
+4. Ən azı 3-5 cümlə yaz. Tək cümləlik cavab vermə.
+5. Şagirdin başa düşməsi üçün lazım gələrsə əlaqəli anlayışı da qısaca xatırlat.
+6. Əgər mövzu dərslik parçalarında izah olunmayıbsa, "Bu mövzu dərslikdə izah olunmayıb." de və başqa heç nə əlavə etmə.
+7. Xarici məlumat ƏLAVƏ ETMƏ. Yalnız dərslik mövzusunda cavab ver.
 
 Dərslik parçaları:
 {context}
@@ -30,18 +35,29 @@ def _build_context(docs: List[Document]) -> str:
     return "\n\n".join(parts)
 
 
-def _generate(prompt: str) -> str:
+def _generate(prompt: str, retries: int = 4) -> str:
     headers = {
         "Content-Type": "application/json",
-        "X-goog-api-key": settings.google_api_key,
+        "Authorization": f"Bearer {settings.groq_api_key}",
     }
     payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"maxOutputTokens": 1024, "temperature": 0.2},
+        "model": MODEL_NAME,
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": 1024,
+        "temperature": 0.2,
     }
-    response = requests.post(GENERATE_URL, json=payload, headers=headers)
-    response.raise_for_status()
-    return response.json()["candidates"][0]["content"]["parts"][0]["text"]
+
+    for attempt in range(retries):
+        response = requests.post(GENERATE_URL, json=payload, headers=headers)
+        if response.status_code in (429, 503):
+            wait = 2 ** attempt
+            print(f"Groq API {response.status_code} — {wait}s gözlənilir...")
+            time.sleep(wait)
+            continue
+        response.raise_for_status()
+        return response.json()["choices"][0]["message"]["content"]
+
+    raise RuntimeError("Groq API yanıt vermədi — bütün cəhdlər uğursuz oldu.")
 
 
 def ask(question: str, subject: str, grade: int) -> AskResponse:
