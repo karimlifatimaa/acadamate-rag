@@ -10,15 +10,18 @@ logger = logging.getLogger(__name__)
 
 
 def ingest_pdf(file_path: str, subject: str, grade: int, original_name: str = "") -> int:
-    logger.info("Ingest başladı", extra={"file": file_path, "subject": subject, "grade": grade})
+    logger.info("Ingest başladı", extra={"original_name": original_name, "subject": subject, "grade": grade})
 
-    chunks: List[Document] = load_and_split(file_path, subject, grade)
+    # Mənalı açar: "subject/grade/filename.pdf"  — temp path deyil
+    source_key = f"{subject}/{grade}/{original_name}" if original_name else file_path
+
+    chunks: List[Document] = load_and_split(file_path, subject, grade, source_key=source_key)
 
     store: QdrantVectorStore = get_vector_store()
     store.add_documents(chunks)
 
     _upsert_book(
-        source_file=file_path,
+        source_file=source_key,
         subject=subject,
         grade=grade,
         original_name=original_name,

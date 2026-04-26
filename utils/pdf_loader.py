@@ -5,7 +5,7 @@ from typing import List
 from services.embedder import GeminiEmbeddings
 
 
-def load_and_split(file_path: str, subject: str, grade: int) -> List[Document]:
+def load_and_split(file_path: str, subject: str, grade: int, source_key: str = "") -> List[Document]:
     loader = PyPDFLoader(file_path)
     pages = loader.load()
 
@@ -14,6 +14,9 @@ def load_and_split(file_path: str, subject: str, grade: int) -> List[Document]:
         breakpoint_threshold_type="percentile",
         breakpoint_threshold_amount=95.0,
     )
+
+    # chunk metadata-da temp path deyil, mənalı açar saxla
+    logical_source = source_key or file_path
 
     chunks: List[Document] = []
     for page in pages:
@@ -25,7 +28,7 @@ def load_and_split(file_path: str, subject: str, grade: int) -> List[Document]:
                 "subject": subject,
                 "grade": grade,
                 "page": page.metadata.get("page", 0),
-                "source_file": file_path,
+                "source_file": logical_source,
             }
             chunks.append(chunk)
 
