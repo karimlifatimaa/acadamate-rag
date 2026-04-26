@@ -23,6 +23,18 @@
 - [x] **Retry/Backoff** — generator və query_augmenter
   429 və 503 xətalarında exponential backoff.
 
+- [x] **Structured Logging (JSON)** — `utils/logger.py`
+  Bütün servislərdə `logging` modulu, JSON formatter, uvicorn logger-ləri eyni axına yönləndirilib.
+
+- [x] **Lifespan Startup** — `main.py`
+  App start-da bir dəfə kolleksiya yoxlanılır + BGE-M3 və BM25 modelləri preload edilir (cold-start sıfırdır).
+
+- [x] **Non-blocking Endpoints** — routers
+  `async def` → `def` (FastAPI thread pool). Eyni anda gələn şagird sualları paralel işlənir.
+
+- [x] **Book Management** — `services/books.py`, `routers/books.py`
+  `GET /books`, `DELETE /books?subject=&grade=&source_file=`. Ingest idempotent olub: eyni fayl yenidən yüklənəndə köhnə chunk-lar avtomatik silinir.
+
 ---
 
 ## Növbəti Addımlar
@@ -130,3 +142,23 @@ Sual 2: "Onu necə isbat edirik?"  ← "onu" = teorem, sistem bilmir
 | 6 | Multi-modal | Çətin | Orta |
 | 7 | Prompt Injection | Asan | Aşağı |
 | 8 | Per-student Rate Limit | Asan | Aşağı |
+
+#	İş	Çətinlik	Vacibliyi
+1	/ingest multipart upload + LFI fix	Asan	KRITIK
+2	httpx.AsyncClient ilə blocking calls təmizlə	Asan	KRITIK
+3	Background job (Celery) ingest üçün	Orta	KRITIK
+4	lifespan ilə collection init	Asan	KRITIK
+5	print() → logging (JSON formatter)	Asan	KRITIK
+6	Secret manager (vault/k8s secrets)	Orta	KRITIK
+7	Prompt injection guard	Orta	YÜKSƏK
+8	pytest testləri (smoke + integration)	Orta	YÜKSƏK
+9	Prometheus metrics	Asan	YÜKSƏK
+10	OpenTelemetry tracing	Orta	YÜKSƏK
+11	DELETE /book endpoint	Asan	YÜKSƏK
+12	Const-ları config-ə köçür	Asan	ORTA
+13	Embedding service-i ayrı	Çətin	ORTA (scale lazım olsa)
+14	JWT + per-user rate limit	Orta	ORTA
+15	Reranker	Asan	NICE-TO-HAVE
+16	Streaming response	Orta	NICE-TO-HAVE
+17	Caching	Asan	NICE-TO-HAVE
+18	CI/CD pipeline	Asan	YÜKSƏK

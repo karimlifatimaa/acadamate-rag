@@ -13,3 +13,6 @@ pydantic-settings==2.6.1
 slowapi==0.1.9
 sentence-transformers==3.3.1
 fastembed==0.8.0
+sqlalchemy==2.0.36
+psycopg2-binary==2.9.10
+python-multipart==0.0.20

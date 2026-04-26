@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List
+from typing import List, Optional
 
 
 class AskRequest(BaseModel):
@@ -21,12 +21,6 @@ class AskResponse(BaseModel):
     confidence: float
 
 
-class IngestRequest(BaseModel):
-    file_path: str = Field(..., min_length=1)
-    subject: str = Field(..., min_length=1)
-    grade: int = Field(..., ge=1, le=11)
-
-
 class IngestResponse(BaseModel):
     chunks_indexed: int
     subject: str
@@ -36,3 +30,23 @@ class IngestResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     qdrant: str
+
+
+class BookInfo(BaseModel):
+    id: str
+    subject: str
+    grade: int
+    source_file: str
+    original_name: str
+    uploaded_at: str
+    status: str
+    total_chunks: int
+
+
+class BooksResponse(BaseModel):
+    books: List[BookInfo]
+    total: int
+
+
+class DeleteBooksResponse(BaseModel):
+    deleted_chunks: int

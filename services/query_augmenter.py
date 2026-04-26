@@ -1,8 +1,12 @@
+import logging
 import requests
 from config import settings
 
+logger = logging.getLogger(__name__)
+
 GENERATE_URL = "https://api.groq.com/openai/v1/chat/completions"
 MODEL_NAME = "llama-3.3-70b-versatile"
+REQUEST_TIMEOUT = 10
 
 HYDE_PROMPT = """Sən şagird sualını Azərbaycan dərsliklərində axtarış üçün hazırlayan köməkçisən.
 
@@ -30,10 +34,10 @@ def augment_query(question: str) -> str:
     }
 
     try:
-        response = requests.post(GENERATE_URL, json=payload, headers=headers, timeout=10)
+        response = requests.post(GENERATE_URL, json=payload, headers=headers, timeout=REQUEST_TIMEOUT)
         response.raise_for_status()
         hyde_answer = response.json()["choices"][0]["message"]["content"].strip()
         return f"{question}\n{hyde_answer}"
     except Exception as e:
-        print(f"Query augmentation uğursuz oldu: {e}")
+        logger.warning("Query augmentation uğursuz oldu", extra={"error": str(e)})
         return question

@@ -1,6 +1,9 @@
+import logging
 from langchain_core.embeddings import Embeddings
 from sentence_transformers import SentenceTransformer
 from typing import List
+
+logger = logging.getLogger(__name__)
 
 MODEL_NAME = "BAAI/bge-m3"
 EMBEDDING_DIM = 1024
@@ -13,9 +16,9 @@ class LocalEmbeddings(Embeddings):
     @classmethod
     def _get_model(cls) -> SentenceTransformer:
         if cls._model is None:
-            print(f"Embedding modeli yüklənir: {MODEL_NAME} (ilk dəfə 2-5 dəq çəkə bilər)")
+            logger.info("Embedding modeli yüklənir", extra={"model": MODEL_NAME})
             cls._model = SentenceTransformer(MODEL_NAME)
-            print("Model hazırdır.")
+            logger.info("Embedding modeli hazırdır", extra={"model": MODEL_NAME})
         return cls._model
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:

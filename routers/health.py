@@ -6,7 +6,7 @@ router = APIRouter()
 
 
 @router.get("/health", response_model=HealthResponse)
-async def health() -> HealthResponse:
+def health() -> HealthResponse:
     try:
         client = get_qdrant_client()
         client.get_collections()

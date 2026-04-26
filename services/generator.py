@@ -1,3 +1,4 @@
+import logging
 import time
 import requests
 from langchain_core.documents import Document
@@ -6,8 +7,11 @@ from models.schemas import AskResponse, SourceChunk
 from services.retriever import retrieve
 from config import settings
 
+logger = logging.getLogger(__name__)
+
 GENERATE_URL = "https://api.groq.com/openai/v1/chat/completions"
 MODEL_NAME = "llama-3.3-70b-versatile"
+REQUEST_TIMEOUT = 30
 
 SYSTEM_PROMPT = """Sən Azərbaycan məktəb şagirdlərinə kömək edən müəllim köməkçisisən.
 Aşağıdakı dərslik parçalarına YALNIZ əsaslanaraq cavab ver.
@@ -48,10 +52,13 @@ def _generate(prompt: str, retries: int = 4) -> str:
     }
 
     for attempt in range(retries):
-        response = requests.post(GENERATE_URL, json=payload, headers=headers)
+        response = requests.post(GENERATE_URL, json=payload, headers=headers, timeout=REQUEST_TIMEOUT)
         if response.status_code in (429, 503):
             wait = 2 ** attempt
-            print(f"Groq API {response.status_code} — {wait}s gözlənilir...")
+            logger.warning(
+                "Groq retry",
+                extra={"status": response.status_code, "wait_s": wait, "attempt": attempt + 1},
+            )
             time.sleep(wait)
             continue
         response.raise_for_status()
@@ -61,9 +68,14 @@ def _generate(prompt: str, retries: int = 4) -> str:
 
 
 def ask(question: str, subject: str, grade: int) -> AskResponse:
+    logger.info(
+        "Ask başladı",
+        extra={"subject": subject, "grade": grade, "question_len": len(question)},
+    )
     results: List[Tuple[Document, float]] = retrieve(question, subject, grade)
 
     if not results:
+        logger.info("Retrieval boş", extra={"subject": subject, "grade": grade})
         return AskResponse(
             answer="Bu mövzu dərslikdə izah olunmayıb.",
             sources=[],
@@ -93,6 +105,10 @@ def ask(question: str, subject: str, grade: int) -> AskResponse:
         for doc in docs
     ]
 
+    logger.info(
+        "Ask tamamlandı",
+        extra={"chunks": len(sources), "confidence": avg_confidence},
+    )
     return AskResponse(
         answer=answer_text,
         sources=sources,

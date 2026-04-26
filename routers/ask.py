@@ -15,7 +15,7 @@ def verify_api_key(key: str = Depends(api_key_header)) -> None:
 
 
 @router.post("/ask", response_model=AskResponse)
-async def ask_endpoint(
+def ask_endpoint(
     request: AskRequest,
     _: None = Depends(verify_api_key),
 ) -> AskResponse:
