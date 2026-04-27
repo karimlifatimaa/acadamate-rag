@@ -8,17 +8,25 @@ GENERATE_URL = "https://api.groq.com/openai/v1/chat/completions"
 MODEL_NAME = "llama-3.3-70b-versatile"
 REQUEST_TIMEOUT = 10
 
-HYDE_PROMPT = """Sən şagird sualını Azərbaycan dərsliklərində axtarış üçün hazırlayan köməkçisən.
+HYDE_PROMPT = """Sən Azərbaycan məktəb dərsliklərindən axtarış üçün sual hazırlayan köməkçisən.
 
-Tapşırıq:
-1. Şagirdin sualını ədəbi Azərbaycan dilinə çevir (ləhcə, qısaltma, yazı səhvlərini düzəlt).
-2. Sonra dərslik üslubunda 2-3 cümləlik FƏRZİ cavab yaz.
+Addımlar:
+1. Şagirdin sualını diqqətlə oxu.
+2. Sual bir tapşırıq, məşq, çalışma və ya səhifəyə istinad edirsə — o tapşırığın NƏ MÖVZUSU OLDUĞUNU müəyyən et. Tapşırığın cavabını deyil, mövzusunu izah et.
+3. Mövzu haqqında dərslik üslubunda 2-3 cümləlik fərzi mətn yaz.
 
-Yalnız fərzi cavabı qaytar — izahatsız, başlıqsız.
+Nümunələr:
+Sual: "səhifə 36 tapşırıq d: -şünas şəkilçisinin funksiyasını izah et"
+Fərzi cavab: "-şünas şəkilçisi sözlərə qoşularaq həmin sahənin bilicisi, mütəxəssisi mənasını bildirir. Şərqşünas, misirşünas sözlərindəki kimi bu şəkilçi elmi ixtisas bildirir. -çı4 şəkilçisindən fərqi odur ki, -şünas daha dar, elmi mənalı peşə ifadə edir."
+
+Sual: "pifaqor teoremi nədir səh 45"
+Fərzi cavab: "Pifaqor teoremi düzbucaqlı üçbucaqda hipotenuzun kvadratı iki katetin kvadratları cəminə bərabərdir."
+
+Yalnız fərzi mətni qaytar — izahatsız, başlıqsız.
 
 Şagird sualı: {question}
 
-Fərzi dərslik cavabı:"""
+Fərzi dərslik mətni:"""
 
 
 def augment_query(question: str) -> str:
@@ -37,6 +45,7 @@ def augment_query(question: str) -> str:
         response = requests.post(GENERATE_URL, json=payload, headers=headers, timeout=REQUEST_TIMEOUT)
         response.raise_for_status()
         hyde_answer = response.json()["choices"][0]["message"]["content"].strip()
+        logger.info("HyDE augmented", extra={"original_len": len(question), "hyde_len": len(hyde_answer)})
         return f"{question}\n{hyde_answer}"
     except Exception as e:
         logger.warning("Query augmentation uğursuz oldu", extra={"error": str(e)})
