@@ -1,0 +1,24 @@
+# Sirlər — image-ə HEÇ VAXT düşməməlidir
+.env
+.env.*
+!.env.example
+
+# Virtual mühitlər (serverdə pip install yenidən qurur)
+.venv
+venv/
+
+# Python keşi
+__pycache__/
+*.pyc
+*.pyo
+
+# Git və IDE
+.git
+.gitignore
+.idea/
+.DS_Store
+
+# Sənədlər və test
+README.md
+IMPROVEMENTS.md
+test_main.http

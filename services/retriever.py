@@ -6,6 +6,7 @@ from qdrant_client.models import Filter, FieldCondition, MatchValue, Range
 from typing import List, Tuple, Optional
 from services.vector_store import get_vector_store
 from services.query_augmenter import augment_query
+from services.reranker import rerank
 
 logger = logging.getLogger(__name__)
 
@@ -72,4 +73,7 @@ def retrieve(question: str, subject: str, grade: int) -> List[Tuple[Document, fl
 
     filtered = [(doc, score) for doc, score in raw if score >= SIMILARITY_THRESHOLD]
     unique = _dedupe(filtered)
-    return unique[:TOP_K]
+
+    # Reranking: namizədləri Groq LLM ilə yenidən sırala, əlaqəsizləri at
+    reranked = rerank(question, unique, TOP_K)
+    return reranked

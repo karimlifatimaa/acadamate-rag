@@ -2,7 +2,7 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_experimental.text_splitter import SemanticChunker
 from langchain_core.documents import Document
 from typing import List
-from services.embedder import GeminiEmbeddings
+from services.embedder import get_embeddings
 
 
 def load_and_split(file_path: str, subject: str, grade: int, source_key: str = "") -> List[Document]:
@@ -10,7 +10,7 @@ def load_and_split(file_path: str, subject: str, grade: int, source_key: str = "
     pages = loader.load()
 
     splitter = SemanticChunker(
-        embeddings=GeminiEmbeddings(),
+        embeddings=get_embeddings(),
         breakpoint_threshold_type="percentile",
         breakpoint_threshold_amount=95.0,
     )

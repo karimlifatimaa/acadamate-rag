@@ -2,17 +2,13 @@ import logging
 from langchain_qdrant import QdrantVectorStore, RetrievalMode, FastEmbedSparse
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, SparseVectorParams
-from services.embedder import LocalEmbeddings
+from services.embedder import get_embeddings
 from config import settings
 
 logger = logging.getLogger(__name__)
 
-VECTOR_SIZE = 1024
+VECTOR_SIZE = 1536
 SPARSE_MODEL = "Qdrant/bm25"
-
-
-def get_embeddings() -> LocalEmbeddings:
-    return LocalEmbeddings()
 
 
 _sparse_embeddings: FastEmbedSparse | None = None
