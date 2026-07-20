@@ -13,6 +13,11 @@ GENERATE_URL = "https://api.groq.com/openai/v1/chat/completions"
 MODEL_NAME = "llama-3.3-70b-versatile"
 REQUEST_TIMEOUT = 30
 
+
+class LLMUnavailableError(Exception):
+    """LLM (Groq) cavab vermədikdə — rate limit, şəbəkə və s."""
+    pass
+
 SYSTEM_PROMPT = """Sən Azərbaycan məktəb şagirdlərinə kömək edən müəllim köməkçisisən.
 Aşağıdakı dərslik parçalarına əsaslanaraq cavab ver.
 
@@ -53,7 +58,12 @@ def _generate(prompt: str, retries: int = 4) -> str:
     }
 
     for attempt in range(retries):
-        response = requests.post(GENERATE_URL, json=payload, headers=headers, timeout=REQUEST_TIMEOUT)
+        try:
+            response = requests.post(GENERATE_URL, json=payload, headers=headers, timeout=REQUEST_TIMEOUT)
+        except requests.RequestException as e:
+            logger.warning("Groq şəbəkə xətası", extra={"error": str(e), "attempt": attempt + 1})
+            time.sleep(2 ** attempt)
+            continue
         if response.status_code in (429, 503):
             wait = 2 ** attempt
             logger.warning(
@@ -65,7 +75,7 @@ def _generate(prompt: str, retries: int = 4) -> str:
         response.raise_for_status()
         return response.json()["choices"][0]["message"]["content"]
 
-    raise RuntimeError("Groq API yanıt vermədi — bütün cəhdlər uğursuz oldu.")
+    raise LLMUnavailableError("Groq API cavab vermədi (rate limit və ya əlçatmaz) — bütün cəhdlər uğursuz oldu.")
 
 
 def ask(question: str, subject: str, grade: int) -> AskResponse:

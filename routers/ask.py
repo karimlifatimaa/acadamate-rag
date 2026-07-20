@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security.api_key import APIKeyHeader
 from models.schemas import AskRequest, AskResponse
-from services.generator import ask
+from services.generator import ask, LLMUnavailableError
 from config import settings
 
 router = APIRouter()
@@ -19,8 +19,14 @@ def ask_endpoint(
     request: AskRequest,
     _: None = Depends(verify_api_key),
 ) -> AskResponse:
-    return ask(
-        question=request.question,
-        subject=request.subject,
-        grade=request.grade,
-    )
+    try:
+        return ask(
+            question=request.question,
+            subject=request.subject,
+            grade=request.grade,
+        )
+    except LLMUnavailableError:
+        raise HTTPException(
+            status_code=503,
+            detail="AI xidməti hazırda məşğuldur (sorğu limiti). Bir neçə saniyədən sonra yenidən cəhd edin.",
+        )

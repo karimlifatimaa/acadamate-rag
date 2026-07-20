@@ -10,7 +10,6 @@ from services.reranker import rerank
 
 logger = logging.getLogger(__name__)
 
-SIMILARITY_THRESHOLD = 0.3
 FETCH_K = 20
 TOP_K = 5
 DEDUP_PREFIX = 120
@@ -46,11 +45,19 @@ def retrieve(question: str, subject: str, grade: int) -> List[Tuple[Document, fl
         ]
     )
 
-    raw: List[Tuple[Document, float]] = store.similarity_search_with_score(
+    # Həm xam sual (dəqiq açar söz/başlıq üçün), həm HyDE ilə axtar (semantik üçün) —
+    # nəticələri birləşdir ki, recall yüksək olsun
+    raw_question = store.similarity_search_with_score(
+        query=question,
+        k=FETCH_K,
+        filter=base_filter,
+    )
+    raw_augmented = store.similarity_search_with_score(
         query=augmented_query,
         k=FETCH_K,
         filter=base_filter,
     )
+    candidates: List[Tuple[Document, float]] = raw_question + raw_augmented
 
     # Şagird "səhifə X" dedisə həmin səhifənin chunk-larını yüksək prioritetlə əlavə et
     page = _extract_page(question)
@@ -63,17 +70,15 @@ def retrieve(question: str, subject: str, grade: int) -> List[Tuple[Document, fl
             ]
         )
         page_results: List[Tuple[Document, float]] = store.similarity_search_with_score(
-            query=augmented_query,
+            query=question,
             k=5,
             filter=page_filter,
         )
         logger.info("Səhifə filter əlavə edildi", extra={"page": page, "found": len(page_results)})
-        # Səhifə chunk-larını əvvələ qoy, sonra ümumi nəticələr
-        raw = page_results + [r for r in raw if r not in page_results]
+        candidates = page_results + candidates
 
-    filtered = [(doc, score) for doc, score in raw if score >= SIMILARITY_THRESHOLD]
-    unique = _dedupe(filtered)
+    unique = _dedupe(candidates)
 
-    # Reranking: namizədləri Groq LLM ilə yenidən sırala, əlaqəsizləri at
+    # Reranking əlaqəsizləri süzür — sərt similarity threshold lazım deyil
     reranked = rerank(question, unique, TOP_K)
     return reranked
