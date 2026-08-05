@@ -1,0 +1,39 @@
+# Serverdə istifadə: docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+#
+# academate-backend ilə eyni Docker şəbəkəsinə (external) qoşulur ki, backend
+# rag-api-ni container adı ilə çağıra bilsin (http://rag-api:8000), Postgres
+# kataloqu da eyni academate-db konteynerində ayrı DB kimi saxlanılır.
+# Portlar xarici internetə açılmır — yalnız 127.0.0.1-ə bind olunur (server
+# üzərində manual test/ingest üçün).
+
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: rag-qdrant
+    restart: unless-stopped
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - academate
+
+  rag-api:
+    build: .
+    image: acadamate-rag:latest
+    container_name: rag-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      - qdrant
+    networks:
+      - academate
+
+volumes:
+  qdrant_data:
+
+networks:
+  academate:
+    external: true
+    name: academate-backend_academate
