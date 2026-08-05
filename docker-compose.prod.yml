@@ -21,6 +21,9 @@ services:
     image: acadamate-rag:latest
     container_name: rag-api
     restart: unless-stopped
+    # --root-path: nginx api.fatimakarimli.me/rag/ altından proxy edəndə
+    # Swagger UI-nin düzgün URL yaratması üçün (route-lara təsir etmir)
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--root-path", "/rag"]
     env_file:
       - .env
     ports:
