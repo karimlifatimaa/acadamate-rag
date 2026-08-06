@@ -2,10 +2,16 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 
 
+class HistoryTurn(BaseModel):
+    role: str = Field(..., pattern="^(user|assistant)$")
+    content: str = Field(..., min_length=1, max_length=2000)
+
+
 class AskRequest(BaseModel):
     question: str = Field(..., min_length=1, max_length=500)
     subject: str = Field(..., min_length=1)
     grade: int = Field(..., ge=1, le=11)
+    history: List[HistoryTurn] = Field(default_factory=list, max_length=6)
 
 
 class SourceChunk(BaseModel):

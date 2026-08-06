@@ -24,6 +24,7 @@ def ask_endpoint(
             question=request.question,
             subject=request.subject,
             grade=request.grade,
+            history=request.history,
         )
     except LLMUnavailableError:
         raise HTTPException(

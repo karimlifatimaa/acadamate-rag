@@ -3,7 +3,7 @@ import time
 import requests
 from langchain_core.documents import Document
 from typing import List, Tuple
-from models.schemas import AskResponse, SourceChunk
+from models.schemas import AskResponse, SourceChunk, HistoryTurn
 from services.retriever import retrieve
 from config import settings
 
@@ -30,11 +30,29 @@ Cavab qaydaları:
 6. Şagird müəyyən bir tapşırıq, məşq və ya çalışmanın cavabını soruşursa — tapşırığın mövzusunu dərslik parçalarından istifadə edərək izah et. Tapşırığın özünü tapmağa çalışma, mövzunu aydınlaşdır.
 7. Yalnız dərslik parçalarındakı məlumatdan istifadə et, xarici məlumat əlavə etmə.
 8. Dərslik parçalarında bu mövzu ilə bağlı heç bir məlumat yoxdursa, "Bu mövzu dərslikdə izah olunmayıb." de.
+9. Söhbətin əvvəlki hissəsi verilibsə, sualı onun davamı kimi başa düş (məs. "bəs bu necə olur?" əvvəlki mövzuya aiddir).
 
 Dərslik parçaları:
 {context}
-
+{history_block}
 Sual: {question}"""
+
+
+def _build_history_block(history: List[HistoryTurn]) -> str:
+    if not history:
+        return ""
+    lines = [
+        f"{'Şagird' if turn.role == 'user' else 'Köməkçi'}: {turn.content}"
+        for turn in history[-6:]
+    ]
+    return "\nSöhbətin əvvəlki hissəsi:\n" + "\n".join(lines) + "\n"
+
+
+def _build_retrieval_query(question: str, history: List[HistoryTurn]) -> str:
+    last_user_turns = [t.content for t in history if t.role == "user"]
+    if not last_user_turns:
+        return question
+    return f"{last_user_turns[-1]}\n{question}"
 
 
 def _build_context(docs: List[Document]) -> str:
@@ -78,12 +96,14 @@ def _generate(prompt: str, retries: int = 4) -> str:
     raise LLMUnavailableError("Groq API cavab vermədi (rate limit və ya əlçatmaz) — bütün cəhdlər uğursuz oldu.")
 
 
-def ask(question: str, subject: str, grade: int) -> AskResponse:
+def ask(question: str, subject: str, grade: int, history: List[HistoryTurn] | None = None) -> AskResponse:
+    history = history or []
     logger.info(
         "Ask başladı",
-        extra={"subject": subject, "grade": grade, "question_len": len(question)},
+        extra={"subject": subject, "grade": grade, "question_len": len(question), "history_len": len(history)},
     )
-    results: List[Tuple[Document, float]] = retrieve(question, subject, grade)
+    retrieval_query = _build_retrieval_query(question, history)
+    results: List[Tuple[Document, float]] = retrieve(retrieval_query, subject, grade)
 
     if not results:
         logger.info("Retrieval boş", extra={"subject": subject, "grade": grade})
@@ -101,6 +121,7 @@ def ask(question: str, subject: str, grade: int) -> AskResponse:
     prompt = SYSTEM_PROMPT.format(
         grade=grade,
         context=context,
+        history_block=_build_history_block(history),
         question=question,
     )
 
