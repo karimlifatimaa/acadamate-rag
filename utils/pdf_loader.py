@@ -27,13 +27,21 @@ def _extract_pages(file_path: str) -> List[Tuple[int, str]]:
         return [(p.metadata.get("page", i), p.page_content) for i, p in enumerate(pages)]
 
     # Skan-şəkil PDF (mətn yoxdur) → OCR
-    logger.info("PDF-də mətn qatı yoxdur, OCR başladı", extra={"pages": len(pages)})
-    images = convert_from_path(file_path, dpi=OCR_DPI)
+    # Səhifə-səhifə emal edirik (hamısını eyni anda yaddaşa yükləmək əvəzinə) —
+    # böyük sənədlərdə (100+ səhifə) yaddaş istifadəsini sabit saxlayır, OOM-un
+    # qarşısını alır (bütün şəkilləri birdən yükləmək 100+ səhifədə server-in
+    # RAM-ını (3-4GB) asanlıqla aşır).
+    total_pages = len(pages)
+    logger.info("PDF-də mətn qatı yoxdur, OCR başladı", extra={"pages": total_pages})
     result: List[Tuple[int, str]] = []
-    for i, img in enumerate(images):
-        text = pytesseract.image_to_string(img, lang=OCR_LANG)
-        result.append((i, text))
-    logger.info("OCR tamamlandı", extra={"pages": len(images)})
+    for page_num in range(1, total_pages + 1):
+        page_images = convert_from_path(file_path, dpi=OCR_DPI, first_page=page_num, last_page=page_num)
+        text = pytesseract.image_to_string(page_images[0], lang=OCR_LANG)
+        result.append((page_num - 1, text))
+        del page_images
+        if page_num % 20 == 0 or page_num == total_pages:
+            logger.info("OCR gedişat", extra={"processed": page_num, "total": total_pages})
+    logger.info("OCR tamamlandı", extra={"pages": total_pages})
     return result
 
 
