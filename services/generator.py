@@ -10,7 +10,7 @@ from config import settings
 logger = logging.getLogger(__name__)
 
 GENERATE_URL = "https://api.groq.com/openai/v1/chat/completions"
-MODEL_NAME = "llama-3.3-70b-versatile"
+MODEL_NAME = "openai/gpt-oss-120b"
 REQUEST_TIMEOUT = 30
 
 
@@ -73,6 +73,9 @@ def _generate(prompt: str, retries: int = 4) -> str:
         "messages": [{"role": "user", "content": prompt}],
         "max_tokens": 1024,
         "temperature": 0.2,
+        # gpt-oss reasoning modelidir — "low" olmasa cavabdan əvvəl daxili
+        # düşünməyə çox token xərcləyir, max_tokens bitəndə content boş qala bilər
+        "reasoning_effort": "low",
     }
 
     for attempt in range(retries):
