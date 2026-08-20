@@ -9,7 +9,7 @@ from config import settings
 logger = logging.getLogger(__name__)
 
 GENERATE_URL = "https://api.groq.com/openai/v1/chat/completions"
-MODEL_NAME = "llama-3.3-70b-versatile"
+MODEL_NAME = "openai/gpt-oss-20b"
 REQUEST_TIMEOUT = 15
 CHUNK_PREVIEW = 500
 
@@ -65,8 +65,11 @@ def rerank(question: str, results: List[Tuple[Document, float]], top_k: int) -> 
     payload = {
         "model": MODEL_NAME,
         "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 128,
+        # 128 reasoning modeli üçün azdır — daxili "düşünmə" tokenləri bunu
+        # bitirir, əsl JSON cavaba yer qalmır (content boş qayıdır)
+        "max_tokens": 600,
         "temperature": 0.0,
+        "reasoning_effort": "low",
     }
 
     try:

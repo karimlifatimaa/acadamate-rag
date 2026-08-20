@@ -5,7 +5,7 @@ from config import settings
 logger = logging.getLogger(__name__)
 
 GENERATE_URL = "https://api.groq.com/openai/v1/chat/completions"
-MODEL_NAME = "llama-3.3-70b-versatile"
+MODEL_NAME = "openai/gpt-oss-20b"
 REQUEST_TIMEOUT = 10
 
 HYDE_PROMPT = """Sən Azərbaycan məktəb dərsliklərindən axtarış üçün sual hazırlayan köməkçisən.
@@ -37,8 +37,9 @@ def augment_query(question: str) -> str:
     payload = {
         "model": MODEL_NAME,
         "messages": [{"role": "user", "content": HYDE_PROMPT.format(question=question)}],
-        "max_tokens": 256,
+        "max_tokens": 500,
         "temperature": 0.3,
+        "reasoning_effort": "low",
     }
 
     try:
